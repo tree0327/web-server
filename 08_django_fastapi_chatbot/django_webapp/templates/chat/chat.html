@@ -1,0 +1,189 @@
+{% extends 'chat/base.html' %}
+
+{% block title %}AI 챗봇 - 대화하기{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-header">
+        <h1>🤖 AI 챗봇</h1>
+        <p>안녕하세요! 무엇을 도와드릴까요?</p>
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+        <div class="message bot">
+            <div class="message-content">
+                안녕하세요! AI 챗봇입니다. 궁금한 것이 있으면 언제든지 물어보세요! 😊
+            </div>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        AI가 응답을 생성하고 있습니다...
+    </div>
+
+    <div class="typing-indicator" id="typing-indicator">
+        <div class="message bot">
+            <div class="message-content">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-input-container">
+        <form class="chat-input-form" id="chat-form">
+            <input
+                type="text"
+                class="chat-input"
+                id="message-input"
+                placeholder="메시지를 입력하세요..."
+                autocomplete="off"
+            />
+            <button type="submit" class="send-button" id="send-button">
+                전송
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Generate session ID
+const sessionId = Math.random().toString(36).substring(2, 15);
+
+// DOM Elements
+const chatMessages = document.getElementById('chat-messages');
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-button');
+const chatForm = document.getElementById('chat-form');
+const loading = document.getElementById('loading');
+const typingIndicator = document.getElementById('typing-indicator');
+
+// Auto-scroll to bottom of chat
+function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Add message to chat interface
+function addMessage(content, isUser = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.textContent = content;
+    
+    messageDiv.appendChild(messageContent);
+    chatMessages.appendChild(messageDiv);
+    
+    scrollToBottom();
+}
+
+// Show/hide loading indicators
+function setLoading(isLoading) {
+    if (isLoading) {
+        typingIndicator.style.display = 'block';
+        sendButton.disabled = true;
+        sendButton.textContent = '전송 중...';
+    } else {
+        typingIndicator.style.display = 'none';
+        sendButton.disabled = false;
+        sendButton.textContent = '전송';
+    }
+    scrollToBottom();
+}
+
+// Display error message in chat
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.textContent = `오류: ${message}`;
+    chatMessages.appendChild(errorDiv);
+    scrollToBottom();
+}
+
+// Send message to server and handle response
+async function sendMessage(message) {
+    if (!message.trim()) return;
+    
+    // Add user message to chat
+    addMessage(message, true);
+    
+    // Show loading state
+    setLoading(true);
+    
+    try {
+        const response = await fetch('/send_message/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                session_id: '{{ session_id }}' || sessionId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            addMessage(data.response, false);
+        } else {
+            showError(data.error || '알 수 없는 오류가 발생했습니다.');
+        }
+    } catch (error) {
+        console.error('Network Error:', error);
+        showError('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+        setLoading(false);
+    }
+}
+
+// Handle form submission
+chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = messageInput.value.trim();
+    
+    if (message) {
+        messageInput.value = '';
+        await sendMessage(message);
+    }
+});
+
+// Handle Enter key press in input field
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        chatForm.dispatchEvent(new Event('submit'));
+    }
+});
+
+// Load chat history when page loads
+window.addEventListener('load', async () => {
+    try {
+
+        {% if session_id %}
+            const response = await fetch(`/get_history/?session_id={{ session_id}}`);
+            const data = await response.json();
+            
+            if (data.history && data.history.length > 0) {
+                // Clear welcome message
+                chatMessages.innerHTML = '';
+                
+                // Add history messages to chat
+                data.history.forEach(msg => {
+                    addMessage(msg.message, msg.type === 'user');
+                });
+            }
+        {% endif %}
+    } catch (error) {
+        console.error('Error loading chat history:', error);
+    }
+});
+
+// Focus input field on page load
+messageInput.focus();
+</script>
+{% endblock %}

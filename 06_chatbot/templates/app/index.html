@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT 직업상담 챗봇</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080d14;
+            --surface: rgba(255,255,255,0.04);
+            --surface-hover: rgba(255,255,255,0.07);
+            --border: rgba(255,255,255,0.08);
+            --border-active: rgba(0,210,190,0.4);
+            --accent: #00d2be;
+            --accent-dim: rgba(0,210,190,0.12);
+            --text-primary: #f0f4f8;
+            --text-secondary: #7a8fa6;
+            --text-muted: #4a5a6a;
+            --drawer-bg: #0d1520;
+            --drawer-w: 320px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        /* Grid background */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(0,210,190,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,210,190,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none; z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -20%; right: -10%;
+            width: 55vw; height: 55vw;
+            background: radial-gradient(circle, rgba(0,210,190,0.05) 0%, transparent 65%);
+            pointer-events: none; z-index: 0;
+        }
+
+        /* ── DRAWER OVERLAY ── */
+        .drawer-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+
+        .drawer-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* ── DRAWER PANEL ── */
+        .drawer {
+            position: fixed;
+            top: 0; right: 0;
+            width: var(--drawer-w);
+            height: 100vh;
+            background: var(--drawer-bg);
+            border-left: 1px solid var(--border);
+            z-index: 101;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .drawer.open {
+            transform: translateX(0);
+        }
+
+        /* Drawer inner glow */
+        .drawer::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 200px;
+            background: radial-gradient(ellipse at top right, rgba(0,210,190,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px 22px 20px;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .drawer-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .drawer-icon {
+            width: 36px; height: 36px;
+            background: var(--accent-dim);
+            border: 1px solid var(--border-active);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+        }
+
+        .drawer-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .drawer-subtitle {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 1px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .drawer-close {
+            width: 32px; height: 32px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+
+        .drawer-close:hover {
+            border-color: var(--border-active);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+        }
+
+        .drawer-body::-webkit-scrollbar { width: 3px; }
+        .drawer-body::-webkit-scrollbar-track { background: transparent; }
+        .drawer-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        /* Session status chip */
+        .session-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            transition: border-color 0.3s;
+        }
+
+        .session-chip.active {
+            background: rgba(0,210,190,0.06);
+            border-color: var(--border-active);
+        }
+
+        .session-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .session-chip.active .session-dot {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            animation: pulse 2s ease infinite;
+        }
+
+        .session-chip-text { flex: 1; min-width: 0; }
+
+        .session-chip-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 3px;
+        }
+
+        .session-chip-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-chip.active .session-chip-value { color: var(--accent); }
+
+        .session-chip-status {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        /* Drawer sections */
+        .drawer-section-label {
+            font-size: 0.7rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .drawer-section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* Drawer action buttons */
+        .drawer-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .drawer-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 13px 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .drawer-btn:hover {
+            border-color: var(--border-active);
+            color: var(--text-primary);
+            background: var(--surface-hover);
+        }
+
+        .drawer-btn.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #080d14;
+            font-weight: 700;
+        }
+
+        .drawer-btn.primary:hover {
+            background: #00ecd4;
+            box-shadow: 0 0 20px rgba(0,210,190,0.3);
+        }
+
+        .drawer-btn.danger {
+            border-color: rgba(231,76,60,0.25);
+            color: #e74c3c;
+        }
+
+        .drawer-btn.danger:hover {
+            background: rgba(231,76,60,0.08);
+            border-color: #e74c3c;
+        }
+
+        .drawer-btn-icon {
+            font-size: 1rem;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        /* Restore input */
+        .restore-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .drawer input[type="text"] {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+            width: 100%;
+        }
+
+        .drawer input[type="text"]::placeholder {
+            color: var(--text-muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.8rem;
+        }
+
+        .drawer input[type="text"]:focus {
+            border-color: var(--border-active);
+            background: rgba(0,210,190,0.04);
+        }
+
+        /* Session list */
+        .session-list-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .session-list-wrap::-webkit-scrollbar { width: 3px; }
+        .session-list-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .session-list-empty {
+            text-align: center;
+            padding: 30px 0;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+
+        .session-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .session-item:hover {
+            border-color: var(--border-active);
+            background: var(--surface-hover);
+        }
+
+        .session-preview {
+            font-size: 0.83rem;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Drawer status */
+        .drawer-status {
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: none;
+        }
+
+        .drawer-status.success {
+            display: block;
+            background: rgba(46,204,113,0.1);
+            border: 1px solid rgba(46,204,113,0.25);
+            color: #2ecc71;
+        }
+
+        .drawer-status.error {
+            display: block;
+            background: rgba(231,76,60,0.1);
+            border: 1px solid rgba(231,76,60,0.25);
+            color: #e74c3c;
+        }
+
+        .drawer-status.info {
+            display: block;
+            background: rgba(52,152,219,0.1);
+            border: 1px solid rgba(52,152,219,0.25);
+            color: #3498db;
+        }
+
+        /* Drawer loading */
+        .drawer-loading {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: var(--accent);
+            font-family: 'JetBrains Mono', monospace;
+            padding: 4px 0;
+        }
+
+        /* ── TOPBAR ── */
+        .topbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 60px;
+            background: rgba(8,13,20,0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 50;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .topbar-logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #f0f4f8, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .topbar-divider {
+            width: 1px;
+            height: 18px;
+            background: var(--border);
+        }
+
+        .topbar-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .topbar-session-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .topbar-session-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent);
+            animation: pulse 2s ease infinite;
+        }
+
+        /* Session drawer toggle button */
+        .session-toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .session-toggle-btn:hover {
+            border-color: var(--border-active);
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .session-toggle-btn .toggle-icon {
+            font-size: 0.9rem;
+        }
+
+        /* ── MAIN LAYOUT ── */
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            padding-top: 80px;
+            padding-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 760px;
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ── HEADER ── */
+        .header {
+            text-align: center;
+            padding: 16px 0 8px;
+            animation: fadeInUp 0.5s ease 0.1s both;
+        }
+
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--accent-dim);
+            border: 1px solid var(--border-active);
+            border-radius: 100px;
+            padding: 5px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            color: var(--accent);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+        }
+
+        .header-badge::before {
+            content: '';
+            width: 5px; height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 7px var(--accent);
+            animation: pulse 2s ease infinite;
+        }
+
+        .header h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(1.8rem, 4.5vw, 2.8rem);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #f0f4f8 20%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            line-height: 1.15;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.98rem;
+            font-weight: 300;
+            line-height: 1.7;
+            max-width: 460px;
+            margin: 0 auto;
+        }
+
+        /* ── FEATURE CARDS ── */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            animation: fadeInUp 0.5s ease 0.2s both;
+        }
+
+        .feature {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px 18px;
+            transition: all 0.25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .feature:hover {
+            border-color: var(--border-active);
+            background: var(--surface-hover);
+            transform: translateY(-2px);
+        }
+
+        .feature:hover::after { opacity: 1; }
+
+        .feature-icon { font-size: 1.3rem; margin-bottom: 10px; display: block; }
+
+        .feature h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+
+        .feature p {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            font-weight: 300;
+        }
+
+        /* ── CHAT CARD ── */
+        .chat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            animation: fadeInUp 0.5s ease 0.3s both;
+        }
+
+        .chat-card-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-card-title::before {
+            content: '';
+            width: 3px; height: 13px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        #chat-messages {
+            height: 440px;
+            overflow-y: auto;
+            padding: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 14px;
+            border: 1px solid var(--border);
+        }
+
+        #chat-messages::-webkit-scrollbar { width: 3px; }
+        #chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 14px;
+            max-width: 82%;
+            font-size: 0.88rem;
+            line-height: 1.7;
+            animation: msgIn 0.22s ease both;
+        }
+
+        @keyframes msgIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            background: var(--accent-dim);
+            border: 1px solid var(--border-active);
+            color: var(--text-primary);
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .bot-message {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            margin-right: auto;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #user-input {
+            flex: 1;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 13px 18px;
+            font-size: 0.9rem;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        #user-input::placeholder { color: var(--text-muted); }
+        #user-input:focus {
+            border-color: var(--border-active);
+            background: rgba(0,210,190,0.04);
+        }
+
+        .send-btn {
+            background: var(--accent);
+            border: none;
+            border-radius: 12px;
+            padding: 13px 22px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #080d14;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            background: #00ecd4;
+            box-shadow: 0 0 20px rgba(0,210,190,0.3);
+            transform: translateY(-1px);
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent);
+            font-size: 0.8rem;
+            margin-top: 10px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .spinner {
+            width: 14px; height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .chat-status {
+            padding: 9px 14px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .chat-status.success { display: block; background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.25); color: #2ecc71; }
+        .chat-status.error   { display: block; background: rgba(231,76,60,0.1);  border: 1px solid rgba(231,76,60,0.25);  color: #e74c3c; }
+        .chat-status.info    { display: block; background: rgba(52,152,219,0.1); border: 1px solid rgba(52,152,219,0.25); color: #3498db; }
+
+        /* ── TIP BAR ── */
+        .tip-bar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: fadeInUp 0.5s ease 0.4s both;
+        }
+
+        .tip-bar p { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6; }
+        .tip-bar strong { color: var(--accent); }
+        .tip-example {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.73rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+            display: block;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 600px) {
+            .features { grid-template-columns: 1fr; }
+            .input-row { flex-direction: column; }
+            .send-btn { width: 100%; }
+            .drawer { width: 100%; }
+            .topbar { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ══ OVERLAY ══ -->
+    <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+
+    <!-- ══ NAVIGATION DRAWER ══ -->
+    <div class="drawer" id="drawer">
+
+        <div class="drawer-header">
+            <div class="drawer-title-group">
+                <div class="drawer-icon">📋</div>
+                <div>
+                    <div class="drawer-title">세션 관리</div>
+                    <div class="drawer-subtitle">Session Manager</div>
+                </div>
+            </div>
+            <button class="drawer-close" onclick="closeDrawer()">✕</button>
+        </div>
+
+        <div class="drawer-body">
+
+            <!-- 현재 세션 상태 -->
+            <div>
+                <div class="drawer-section-label">현재 세션</div>
+                <div class="session-chip inactive" id="drawer-session-chip">
+                    <div class="session-dot"></div>
+                    <div class="session-chip-text">
+                        <div class="session-chip-label">Session ID</div>
+                        <div class="session-chip-value" id="drawer-session-id">없음</div>
+                        <div class="session-chip-status" id="drawer-session-status">새 상담을 시작해주세요</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 상태 메시지 -->
+            <div class="drawer-status" id="drawer-status"></div>
+            <div class="drawer-loading" id="drawer-loading">
+                <div class="spinner"></div>
+                <span>처리 중...</span>
+            </div>
+
+            <!-- 빠른 작업 -->
+            <div>
+                <div class="drawer-section-label">빠른 작업</div>
+                <div class="drawer-actions">
+                    <button class="drawer-btn primary" onclick="newConversation()">
+                        <span class="drawer-btn-icon">🆕</span>
+                        새 상담 시작
+                    </button>
+                    <button class="drawer-btn" onclick="loadSessionList()">
+                        <span class="drawer-btn-icon">📜</span>
+                        저장된 세션 불러오기
+                    </button>
+                    <button class="drawer-btn danger" onclick="endConversation()">
+                        <span class="drawer-btn-icon">🔚</span>
+                        상담 종료
+                    </button>
+                </div>
+            </div>
+
+            <!-- 세션 ID 복원 -->
+            <div>
+                <div class="drawer-section-label">세션 복원</div>
+                <div class="restore-group">
+                    <input type="text" id="session-input"
+                        placeholder="세션 ID를 붙여넣으세요">
+                    <button class="drawer-btn" onclick="restoreConversation()" style="justify-content:center">
+                        <span class="drawer-btn-icon">🔄</span>
+                        대화 복원하기
+                    </button>
+                </div>
+            </div>
+
+            <!-- 세션 목록 -->
+            <div id="session-list-wrap" style="display:none">
+                <div class="drawer-section-label">세션 목록</div>
+                <div class="session-list-wrap" id="session-list"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ══ TOPBAR ══ -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <span class="topbar-logo">IT 직업상담</span>
+            <div class="topbar-divider"></div>
+            <div class="topbar-badge">
+                <div class="topbar-session-dot" id="topbar-dot"></div>
+                <span id="topbar-session-label">세션 없음</span>
+            </div>
+        </div>
+        <button class="session-toggle-btn" onclick="openDrawer()">
+            <span class="toggle-icon">⚙</span>
+            세션 관리
+        </button>
+    </header>
+
+    <!-- ══ MAIN CONTENT ══ -->
+    <div class="page-wrapper">
+        <div class="container">
+
+            <!-- Header -->
+            <div class="header">
+                <div class="header-badge">AI Career Advisor · Online</div>
+                <h1>IT 직업상담 챗봇</h1>
+                <p>AI 기반 IT 분야 전문 직업상담사가<br>당신의 진로 고민을 함께 해결해드립니다</p>
+            </div>
+
+            <!-- Feature Cards -->
+            <div class="features">
+                <div class="feature">
+                    <span class="feature-icon">💼</span>
+                    <h3>맞춤형 진로 상담</h3>
+                    <p>개인의 관심사와 경험을 바탕으로 한 IT 분야 맞춤 진로 상담을 제공합니다.</p>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">📚</span>
+                    <h3>실무 중심 조언</h3>
+                    <p>현실적이고 구체적인 학습 방향과 실무에 직결되는 조언을 안내해드립니다.</p>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🎯</span>
+                    <h3>개인 정보 기억</h3>
+                    <p>대화 중 언급한 정보를 기억해 더욱 개인화된 상담을 지속적으로 제공합니다.</p>
+                </div>
+            </div>
+
+            <!-- Chat -->
+            <div class="chat-card">
+                <div class="chat-card-title">실시간 상담</div>
+
+                <div id="chat-messages">
+                    <div class="message bot-message">
+                        안녕하세요! IT 직업상담사입니다. 😊<br>
+                        진로에 대한 고민이나 궁금한 것이 있으시면 언제든 말씀해주세요!<br>
+                        먼저 성함과 관심 있는 IT 분야를 알려주시면 더 나은 상담을 드릴 수 있어요.
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <input type="text" id="user-input" placeholder="궁금한 것을 자유롭게 물어보세요..." maxlength="500">
+                    <button class="send-btn" onclick="sendMessage()">전송 →</button>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <span>상담사가 답변을 준비하고 있습니다...</span>
+                </div>
+
+                <div class="chat-status" id="chat-status"></div>
+            </div>
+
+            <!-- Tip -->
+            <div class="tip-bar">
+                <span>💡</span>
+                <div>
+                    <p><strong>Tip.</strong> 구체적인 질문일수록 더 정확한 답변을 받을 수 있어요!</p>
+                    <span class="tip-example">"파이썬 백엔드 개발자가 되고 싶은데 어떻게 시작해야 하나요?"</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;  // 대화 세션 ID
+
+        // ════════════════════════════════════════
+        // ── Drawer ──
+        // ════════════════════════════════════════
+
+        // Drawer를 열고, 오버레이를 표시하는 함수
+        function openDrawer() {
+            document.getElementById('drawer').classList.add('open');
+            document.getElementById('drawer-overlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Drawer를 닫고, 오버레이를 삭제하는 함수
+        function closeDrawer() {
+            document.getElementById('drawer').classList.remove('open');
+            document.getElementById('drawer-overlay').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        // ESC 키로 Drawer 닫기
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeDrawer();
+        });
+
+        // ── 이벤트 리스너 ──
+        document.getElementById('user-input').addEventListener('keypress', e => {
+            if (e.key === 'Enter') sendMessage();  // 사용자 입력창에서 Enter 입력 시 메시지 전송
+        });
+        document.getElementById('session-input').addEventListener('keypress', e => {
+            if (e.key === 'Enter') restoreConversation();  // 세션 입력창에서 Enter 입력 시 대화 복원
+        });
+
+        // ── 상태 메시지 헬퍼 ──
+        // 채팅 영역 상태 메시지를 보여주는 함수
+        function showChatStatus(msg, type) {
+            const el = document.getElementById('chat-status');
+            el.textContent = msg;
+            el.className = `chat-status ${type}`;  // 상태 유형에 따라 스타일 적용
+            setTimeout(() => { el.className = 'chat-status'; }, 5000);  // 5초 후 기본 스타일로 복구
+        }
+
+        // Drawer 영역 상태 메시지를 보여주는 함수
+        function showDrawerStatus(msg, type) {
+            const el = document.getElementById('drawer-status');
+            el.textContent = msg;
+            el.className = `drawer-status ${type}`;
+            setTimeout(() => { el.className = 'drawer-status'; }, 5000);
+        }
+
+        // 채팅 로딩 UI 표시 여부를 제어하는 함수
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+        }
+
+        // Drawer 로딩 UI 표시 여부를 제어하는 함수
+        function showDrawerLoading(show) {
+            document.getElementById('drawer-loading').style.display = show ? 'flex' : 'none';
+        }
+
+        // ── 세션 UI 업데이트 ──
+        // 현재 sessionId 상태에 맞게 세션 관련 UI를 갱신하는 함수
+        function updateSessionUI() {
+            const chip = document.getElementById('drawer-session-chip');
+            const idEl = document.getElementById('drawer-session-id');
+            const statusEl = document.getElementById('drawer-session-status');
+            const dot = document.getElementById('topbar-dot');
+            const label = document.getElementById('topbar-session-label');
+
+            if (sessionId) {  // 활성 세션이 있으면
+                chip.className = 'session-chip active';
+                idEl.textContent = sessionId.substring(0, 8) + '...';
+                statusEl.textContent = '활성 · 대화 진행 중';
+                dot.className = 'topbar-session-dot active';
+                label.textContent = sessionId.substring(0, 8) + '...';
+            } else {  // 활성 세션이 없으면
+                chip.className = 'session-chip inactive';
+                idEl.textContent = '없음';
+                statusEl.textContent = '새 상담을 시작해주세요';
+                dot.className = 'topbar-session-dot';
+                label.textContent = '세션 없음';
+            }
+        }
+
+        // ── 메시지 렌더링 헬퍼 ──
+
+        // 채팅 메시지를 화면에 추가하는 함수
+        function addMessage(content, isUser, timestamp = null) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            let html = content.replace(/\n/g, '<br>');  // 줄바꿈 문자를 <br>로 변환
+            if (timestamp) {
+                html += `<div class="message-time">${new Date(timestamp).toLocaleString('ko-KR')}</div>`;
+            }
+            div.innerHTML = html;  // 메시지 내용 추가
+            container.appendChild(div);  // 컨테이너 메시지 추가
+            container.scrollTop = container.scrollHeight;  // 스크롤을 맨 아래로 이동
+        }
+
+        // 채팅창을 기본 안내 메시지 상태로 초기화하는 함수
+        function clearChatMessages() {
+            document.getElementById('chat-messages').innerHTML = `
+                <div class="message bot-message">
+                    안녕하세요! IT 직업상담사입니다. 😊<br>
+                    진로에 대한 고민이나 궁금한 것이 있으시면 언제든 말씀해주세요!<br>
+                    먼저 성함과 관심 있는 IT 분야를 알려주시면 더 나은 상담을 드릴 수 있어요.
+                </div>`;
+        }
+
+        // ── 세션 목록에서 항목 클릭 시 ──
+
+        // 세션 목록에서 선택한 세션 ID를 입력창에 넣고 복원하는 함수
+        function pickSession(id) {
+            document.getElementById('session-input').value = id;  // 선택한 세션 ID를 입력창에 설정
+            document.getElementById('session-list-wrap').style.display = 'none';  // 세션 목록 영역 숨김
+            restoreConversation();  // 해당 세션 대화 복원 실행
+        }
+
+
+        // ════════════════════════════════════════
+        // ── TODO: 아래 5개 함수를 직접 구현하세요 ──
+        // ════════════════════════════════════════
+
+        /**
+         * TODO: 새 대화 세션을 시작합니다.
+         *
+         * 구현 목표:
+         *   POST /app/init_conversation 호출
+         *   → 응답 JSON: { session_id: "..." }
+         *   → sessionId 변수에 저장
+         *   → updateSessionUI() 호출로 상단 UI 갱신
+         *   → clearChatMessages() 호출로 채팅창 초기화
+         *   → closeDrawer() 호출
+         *
+         * 힌트:
+         *   - showDrawerLoading(true/false) 로 로딩 표시
+         *   - showDrawerStatus("메시지", 'success'|'error') 로 결과 알림
+         *   - fetch 옵션: method: 'POST'
+         */
+        // 새 대화 세션을 시작하는 함수
+        async function newConversation() {
+            const response = await fetch("{% url 'app:init_conversation' %}", {
+                method: 'POST', 
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'  // 전송 데이터 형식 지정
+                }
+            })
+            if (response.ok) {  // 정상 처리인 경우
+                const data = await response.json();  // 응답 데이터를 JSON으로 변환
+                // 전역 sessionId에 대입
+                sessionId = data.session_id
+
+                updateSessionUI();
+                clearChatMessages();
+                showDrawerStatus('새 상담을 시작합니다...');
+                closeDrawer();
+            }
+            else {
+                console.log('새 대화 시작에 실패했습니다.');
+            }
+        }
+
+        /**
+         * TODO: 사용자 메시지를 전송하고 AI 응답을 받습니다.
+         *
+         * 구현 목표:
+         *   1. #user-input 의 값을 읽어 query 변수에 저장
+         *   2. query가 비어있거나 sessionId가 없으면 showChatStatus()로 경고
+         *   3. addMessage(query, true) 로 사용자 메시지 즉시 화면에 표시
+         *   4. POST /app/chatbot 호출
+         *      - 전송 형식: FormData (query, session_id)
+         *   → 응답 JSON: { content: "AI 응답 텍스트" }
+         *   5. addMessage(data.content, false) 로 AI 응답 표시
+         *
+         * 힌트:
+         *   - showLoading(true/false) 로 로딩 스피너 제어
+         *   - FormData 사용 예: const fd = new FormData(); fd.append('key', value);
+         *   - fetch 바디에 FormData를 그대로 전달하면 Content-Type 자동 설정
+         */
+        // 사용자 메시지를 전송하고 AI 응답을 받는 함수
+        async function sendMessage() {
+            const $userInput = document.querySelector('#user-input');  // 사용자 입력창
+            const query = $userInput.value.trim();  // 사용자 입력값의 앞뒤 공백 제거 => query
+
+            // sessionId 초기화 확인
+            if (!sessionId) {
+                showChatStatus('세션을 시작한 후 대화를 시작하세요.');
+                return;
+            }
+
+            // 사용자메세지 화면 출력
+            addMessage(query, true);  // 사용자 메시지를 채팅창에 출력
+            $userInput.value = '';    // 사용자 입력창을 비움
+
+            // 챗봇 대화 요청
+            try {
+                showLoading(true);  // 로딩 UI 표시
+
+                const formData = new FormData()  // 전송할 FormData 객체 생성
+                formData.append('query', query);
+                formData.append('session_id', sessionId);
+                const response = await fetch("{% url 'app:chatbot' %}", {
+                    method: 'POST', 
+                    body: formData
+                });
+                if (response.ok) {
+                    const data = await response.json();  // JSON 응답 데이터 파싱
+                    const {content} = data;  // 응답 내용 추출
+                    addMessage(content, false);  // 챗봇 응답을 화면에 출력
+                }
+                else if (response.status == 404) {
+                    showChatStatus('세션이 만료되었습니다.', 'error');
+                    sessionId = null;  // 세션 ID 초기화
+                    updateSessionUI();  // 세션 상태 UI 갱신
+                }
+                else {
+                    showChatStatus('챗봇 질의응답에 실패했습니다.', 'error');
+                }
+            }
+            catch {
+                showChatStatus('네트워크 오류가 발생했습니다.', 'error');
+            }
+            finally {
+                showLoading(false);  // 로딩 UI 숨김 처리
+            }
+
+            
+        }
+
+        /**
+         * TODO: 세션 ID를 입력받아 기존 대화를 복원합니다.
+         *
+         * 구현 목표:
+         *   1. #session-input 의 값을 읽어 inputId 변수에 저장
+         *   2. inputId가 비어있으면 showDrawerStatus()로 경고 후 return
+         *   3. POST /app/restore_conversation 호출
+         *      - 전송 형식: JSON body { session_id: inputId }
+         *   → 응답 JSON: { session_id, conversation_history: [{type, content, created_at}], message_count }
+         *   4. sessionId 변수에 복원된 session_id 저장
+         *   5. updateSessionUI() 호출
+         *   6. conversation_history 를 순회하며 addMessage() 로 화면에 복원
+         *      - type === 'human' 이면 isUser=true
+         *   7. closeDrawer() 호출
+         *
+         * 힌트:
+         *   - fetch 옵션: method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...})
+         *   - 404 응답: 세션 없음 → showDrawerStatus("해당 세션을 찾을 수 없습니다.", 'error')
+         */
+
+        // 세션 ID를 입력받아 기존 대화를 복원하는 함수
+        async function restoreConversation() {
+            const $sessionInput = document.querySelector('#session-input');
+            const sessionIdToRestore = $sessionInput.value.trim();
+
+            if (!sessionIdToRestore) {
+                showDrawerStatus('복원할 세션ID를 입력하세요.', 'error');
+                return;
+            }
+
+            const response = await fetch("{% url 'app:restore_conversation' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'session_id': sessionIdToRestore  // 복원할 세션 ID 전달
+                })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                console.log(data);
+
+                // 복원 
+                sessionId = data.session_id;
+                updateSessionUI();
+
+                const $chatMessages = document.querySelector('#chat-messages');
+                $chatMessages.innerHTML = ''; 
+                data.conversation_history.forEach((message) => {
+                    addMessage(message.content, message.type == 'human')  // 복원된 메시지를 순서대로 화면에 출력
+                });
+            }
+            else if (response.status === 404) {
+                showDrawerStatus('해당 세션은 존재하지 않습니다.', 'error');
+            }
+            else {
+                showDrawerStatus('대화 복구에 실패했습니다.', 'error');
+            }
+        }
+
+        /**
+         * TODO: 저장된 전체 세션 목록을 불러와 Drawer에 표시합니다.
+         *
+         * 구현 목표:
+         *   GET /app/get_session_list 호출
+         *   → 응답 JSON: { sessions: [{session_id, first_message_preview, message_count, last_message_time}], total_sessions }
+         *   → 세션이 없으면 "저장된 세션이 없습니다." 텍스트 표시
+         *   → 세션이 있으면 각 항목을 .session-item 카드로 렌더링
+         *      - 카드 클릭 시 pickSession(session_id) 호출
+         *   → #session-list-wrap 을 display: block 으로 표시
+         *
+         * 힌트:
+         *   - listEl.innerHTML 에 map().join('') 으로 HTML 문자열 삽입
+         *   - session-item, session-preview, session-meta CSS 클래스 활용
+         *   - new Date(isoString).toLocaleString('ko-KR') 으로 날짜 포맷
+         */
+
+        // 저장된 전체 세션 목록을 불러와 Drawer에 표시하는 함수
+        async function loadSessionList() {
+            const $wrap = document.querySelector('#session-list-wrap');
+            const $listEl = document.querySelector('#session-list');
+            
+            const response = await fetch("{% url 'app:get_session_list' %}");
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.sessions.length === 0) {  // 저장된 세션이 하나도 없는 경우
+                    $listEl.innerHTML = `
+                    <div class='session-list-empty'>저장된 세션이 없습니다.</div>
+                    `;
+                }
+                else {
+                    $listEl.innerHTML = data.sessions.map((sess) => `
+                    <div class='session-item' onclick='pickSession("${sess.session_id}")'>
+                        <div class="session-preview">${sess.first_message_preview}</div>
+                    </div>
+                    `).join('');  // 세션 목록을 HTML 문자열로 만들어서 출력
+                    $wrap.style.display = 'block'; // 노출
+                    showDrawerStatus(`${data.total_sessions}개의 세션을 조회했습니다.`, 'info');
+                }
+            }
+            else {
+                showDrawerStatus('세션 목록 조회에 실패했습니다.', 'error');
+            }
+
+        }
+
+        /**
+         * TODO: 현재 세션의 모든 메시지를 삭제하고 상담을 종료합니다.
+         *
+         * 구현 목표:
+         *   1. sessionId가 없으면 showDrawerStatus()로 경고 후 return
+         *   2. confirm() 으로 사용자에게 삭제 확인
+         *   3. DELETE /app/remove_conversation 호출
+         *      - 전송 형식: JSON body { session_id: sessionId }
+         *   → 응답 JSON: { message, deleted_messages }
+         *   4. sessionId = null 로 초기화
+         *   5. updateSessionUI() 호출
+         *   6. #chat-messages 에 종료 메시지 표시
+         *   7. closeDrawer() 호출
+         *
+         * 힌트:
+         *   - fetch 옵션: method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...})
+         */
+
+        // 현재 세션의 모든 메시지를 삭제하고 상담을 종료하는 함수
+        async function endConversation() {
+           if (!sessionId) {
+                showDrawerStatus('진행중인 상담이 없습니다.', 'error');
+                return;
+           }
+           // 취소하면
+           if (!confirm('정말 상담을 종료하시겠습니까? 모든 메시지가 삭제됩니다.')) {
+                return;
+           }
+
+           const response = await fetch("{% url 'app:remove_conversation' %}", {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'session_id': sessionId
+                })
+           })
+
+           if (response.ok) {
+                const data = await response.json();
+                sessionId = null;
+                updateSessionUI();
+                document.querySelector('#chat-messages').innerHTML = `
+                <div class='message bot-message'>
+                    상담이 종료되었습니다. 좋은 하루 보내세요!😊
+                </div>`;
+                showDrawerStatus('상담내역을 정상적으로 삭제했습니다.', 'success')
+
+           }
+           else {
+                showDrawerStatus('상담내역 삭제에 실패했습니다.', 'error');
+           }
+
+        }
+
+
+        // ── 초기화 ──
+        updateSessionUI();  // 페이지 로드시 현재 세션 상태에 맞게 UI 초기화
+    </script>
+</body>
+</html>

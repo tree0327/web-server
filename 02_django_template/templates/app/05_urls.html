@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Django Template | 05_Urls</title>
+</head>
+<body>
+    <h1>05_Urls</h1>
+    <a href="{% url 'app:index' %}">인덱스 페이지</a>
+
+    <h2>경로 변수 Path Variables</h2>
+    <ul>
+        <li><a href="{% url 'app:articles_detail' id=1 %}">기사1</a></li>
+        <li><a href="{% url 'app:articles_detail' id=2 %}">기사2</a></li>
+
+        <li><a href="{% url 'app:articles_category' category='finance' id=123 %}">경제뉴스123</a></li>
+        <li><a href="{% url 'app:articles_category' category='entertainment' id=456 %}">연예뉴스456</a></li>
+    </ul>
+
+    <h2>Query String</h2>
+    <ul>
+        <li><a href="{% url 'app:search' %}?q=로션&lang=kr">/app/search?q=로션&lang=kr</a></li>
+        <li><a href="{% url 'app:search' %}?q=로션&q=치약&lang=kr">/app/search?q=로션&q=치약&lang=kr</a></li>
+        <li>q = {{ q }}</li>
+        <li>lang = {{ lang }}</li>
+    </ul>
+
+    <!--
+    GET 방식 2가지
+    
+    - Path Variables 경로변수 방식 : URL 경로 자체에 값을 넣는 방식
+    예) /app/articles/1 or /app/articles/finance/123
+    예2) /articles/1 -> 1번 기사 조회 or /user/15 -> 15번 사용자 조회 or /product/300 -> 300번 상품 조회
+    
+    - Query String 방식 : 리소스를 필터링하거나 옵션을 주는 방식
+    예) /search?q=로션 -> 검색 or / product?page=2 -> 페이징 or /articles?category=sports -> 카테고리 필터링
+    => 주로 검색, 정렬, 필터링, 옵션 등에 사용
+    -->
+
+</body>
+</html>

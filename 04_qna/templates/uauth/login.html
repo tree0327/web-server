@@ -1,0 +1,25 @@
+<!-- 사용자가 아이디와 비밀번호를 입력해 로그인하는 화면 템플릿 -->
+{% extends "../layout/base.html" %}
+{% block content %}
+    <div class="container my-3">
+        <form method="post" action="{% url 'uauth:login' %}">
+            {% csrf_token %}
+            {# 인증이 필요한 페이지(next) 접근시 우선 로그인후 해당페이지로 이동한다. #}
+            <input type="hidden" name="next" value="{{ next }}">
+            
+            {% include '../layout/form_error.html' %}
+            
+            <div class="mb-3">
+                <label for="username">사용자ID</label>
+                <input type="text" class="form-control" name="username" id="username"
+                       value="{{ form.username.value | default_if_none:'' }}">
+            </div>
+            <div class="mb-3">
+                <label for="password">비밀번호</label>
+                <input type="password" class="form-control" name="password" id="password"
+                       value="{{ form.password.value | default_if_none:'' }}">
+            </div>
+            <button type="submit" class="btn btn-primary">로그인</button>
+        </form>
+    </div>
+{% endblock %}

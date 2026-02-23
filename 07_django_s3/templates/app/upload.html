@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload File To S3</title>
+</head>
+<body>
+    <h1>S3에 파일 업로드하기</h1>
+    {% if messages %}
+    <ul>
+        {% for message in messages %}
+        <li>
+            <strong>{{ message.tags }}</strong>
+            {# html 메시지 처리를 위해 safe filter 적용 #}
+            {{ message.message | safe }}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">업로드하기</button>
+    </form>
+</body>
+</html>

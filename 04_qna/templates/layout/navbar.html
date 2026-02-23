@@ -1,0 +1,54 @@
+<!-- 사이트 상단에 공통으로 표시되는 네비게이션 바(navbar)를 구성하는 템플릿 -->
+{% load static %}
+<nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+  <div class="container-fluid">
+      <a class="navbar-brand" href="{% url 'qna:index' %}">🇶 🇳 🇦</a>
+      <button class="navbar-toggler" type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#navbarSupportedContent"
+              aria-controls="navbarSupportedContent"
+              aria-expanded="false"
+              aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+              <a class="nav-link active" aria-current="page" href="{% url 'qna:index' %}">Home</a>
+          </li>
+          <li class="nav-item">
+              <a class="nav-link" href="#">About</a>
+          </li>
+        </ul>
+
+        {% if user.is_authenticated %}
+          {# 로그인된 경우#}
+          <ul class="navbar-nav mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a class="nav-link" href="" title="{{ user.username }}">
+                {% if user.userdetail.profile %}
+                  <img src="{{ user.userdetail.profile.url }}" width="26px" class="rounded-circle" alt="">
+                {% else %}
+                  <img src="/media/profiles/default.png" width="26px" class="rounded-circle" alt="">
+                {% endif %}
+              </a>
+            </li>
+            <li>
+                <a class="nav-link" href="{% url 'uauth:logout' %}">로그아웃</a>
+            </li>
+          </ul>
+        {% else %}
+          {# 로그인되지 않은 경우#}
+          <ul class="navbar-nav mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'uauth:login' %}">로그인</a>
+            </li>
+            <li>
+                <a class="nav-link" href="{% url 'uauth:signup' %}">회원가입</a>
+            </li>
+          </ul>
+        {% endif %}
+        
+      </div>
+  </div>
+</nav>

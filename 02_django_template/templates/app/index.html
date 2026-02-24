@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Django Template</title>
+</head>
+<body>
+    <h1>Django Temaplate Index Page</h1>
+
+    {# {% url ... %} : app/urls.py 에서 설정한 내용을 가지고 url 생성 (예: app/01_variables_filters) #}
+    <nav>
+        <ul>
+            <li><a href="{% url 'app:01_variables_filters' %}">Variables & Filters</a></li>
+            <li><a href="{% url 'app:02_tags' %}">Tags</a></li>
+            <li><a href="{% url 'app:03_layout' %}">Layout</a></li>
+            <li><a href="{% url 'app:04_static_files' %}">Static Files</a></li>
+            <li><a href="{% url 'app:05_urls' %}">URLs</a></li>
+            <li><a href="{% url 'app:06_bootstrap' %}">Bootstrap</a></li>
+        </ul>
+    </nav>
+</body>
+</html>

@@ -1,0 +1,100 @@
+{% extends "../layout/base.html" %}
+
+{% block style %}
+<style>
+    .feedback.error { color: red; }
+    .feedback.success { color: green; }
+</style>
+{% endblock style %}
+
+{% block content %}
+    <div class="container my-3">
+        <form name="userCreateFrm" method="post" action="" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% include "../layout/form_error.html" %}
+
+            <div class="mb-3">
+                <label for="username">사용자 이름</label>
+                <input type="text" class="form-control" name="username" id="username"
+                       value="{{ form.username.value|default_if_none:'' }}">
+                <sub id="username-feedback" class="feedback"></sub>
+                <input type="hidden" id="id-valid" value="0">
+            </div>
+            <div class="mb-3">
+                <label for="password1">비밀번호</label>
+                <input type="password" class="form-control" name="password1" id="password1"
+                       value="{{ form.password1.value|default_if_none:'' }}">
+            </div>
+            <div class="mb-3">
+                <label for="password2">비밀번호 확인</label>
+                <input type="password" class="form-control" name="password2" id="password2"
+                       value="{{ form.password2.value | default_if_none:'' }}">
+            </div>
+            <div class="mb-3">
+                <label for="email">이메일</label>
+                <input type="text" class="form-control" name="email" id="email"
+                       value="{{ form.email.value|default_if_none:'' }}">
+            </div>
+            <div class="mb-3">
+                <label for="birthday">생일</label>
+                <input type="date" class="form-control" name="birthday" id="birthday"
+                       value="{{ form.birthday.value|default_if_none:'' }}">
+            </div>
+            <div class="mb-3">
+                <label for="profile" class="form-label">프로필</label>
+                <input class="form-control" type="file" id="profile" name="profile">
+            </div>
+            <button type="submit" class="btn btn-primary">회원가입하기</button>
+        </form>
+    </div>
+{% endblock %}
+
+
+{% block script %}
+<script>
+const $username = document.querySelector('#username');
+const $usernameFeedback = document.querySelector('#username-feedback');
+const $idValid = document.querySelector('#id-valid')
+
+// username 입력값이 변경될 때마다 실행
+$username.addEventListener('input', async (e) => {
+    $usernameFeedback.classList.remove('success', 'error');  // 스타일 제거
+    const value = e.target.value.trim();  // 입력값 앞뒤 공백 제거
+    // console.log(value);
+
+    if (value.length < 4) {
+        // 4글자 미만 작성시 무시
+        $usernameFeedback.classList.add('error');  // 오류 스타일 적용
+        $usernameFeedback.textContent = '아이디는 4글자 이상이어야 합니다.';
+        $idValid.value = '0';   // 유효하지 않은 아이디 표시
+        return;
+    }
+
+    // 아이디체크 비동기 요청
+    const response = await fetch("{% url 'uauth:check_username'%}?username=" + value);
+    const data = await response.json();
+    // console.log(data);
+    const {available, message} = data;
+    $usernameFeedback.textContent = message;
+    if (available) {
+        $usernameFeedback.classList.add('success');  // 성공 스타일 적용
+        $idValid.value = '1'; // 유효한 아이디를 작성한 경우
+    }
+    else {
+        $usernameFeedback.classList.add('error');
+        $idValid.value = '0';  // 유효하지 않은 아이디
+    }
+});
+
+// 회원가입 폼 제출시
+document.userCreateFrm.addEventListener('submit', (e) => {
+    // 폼 제출시 유효한 아이디를 입력했는지 확인
+    if ($idValid.value != '1') {
+        alert('유효한 아이디를 입력해주세요.');
+        e.preventDefault();  // 폼 제출 방지
+        return;
+    }
+});
+</script>
+{% endblock script %}

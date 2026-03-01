@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Django Termplate | 02_Tags</title>
+    <style>
+        table {
+            border: 2px solid #000;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 2px solid #000;
+            padding: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>02_Tags</h1>
+    <a href="{% url 'app:index' %}">인덱스 페이지</a>
+
+    <h2>조건문</h2>
+    {% if age >= 20 %}
+    <p>당신은 성인 입니다.</p>
+    {% elif age >= 10 %}
+    <p>당신은 청소년 입니다.</p>
+    {% else %}
+    <p>당신은 어린이 입니다.</p>
+    {% endif %}
+
+    {% if is_authenticated %}
+    <p>{{ name }}님 로그인되셨습니다!</p>
+    {% else %}
+    <p><a href='#'>로그인</a>해주세요</p>
+    {% endif %}
+
+    <h2>반복문</h2>
+    <ul>
+        {% for fruit in fruits %}
+        <li>{{ fruit }}</li>
+        {% endfor %}
+    </ul>
+
+    <table>
+        <thead>
+            <tr>
+                <th>번호</th>
+                <th>아이디</th>
+                <th>이름</th>
+                <th>나이</th>
+                <th>결혼여부</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ user.id }}</td>
+                <td>{{ user.name }}</td>
+                <td>{{ user.age }}</td>
+                {# <td>{{ user.married | yesno:"결혼,미혼" }}</td> #}
+                <td>
+                    <input type="checkbox" id="married{{ forloop.counter0 }}" {% if user.married %}checked{% endif %} onclick="return false;">
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <th colspan="5">조회된 회원이 없습니다.</th>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>
